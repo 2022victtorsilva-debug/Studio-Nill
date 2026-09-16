@@ -1,0 +1,76 @@
+name: Deploy Studio Nill to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Importar imagens originais uma única vez
+        shell: bash
+        run: |
+          set -e
+          mkdir -p src/assets
+          BASE="https://id-preview--91706565-1ecb-448e-835c-bf149db6ebc0.lovable.app"
+          [ -s src/assets/loiro-longo-v2.jpg ] || curl -fL --retry 3 "$BASE/__l5e/assets-v1/701a38de-e935-4db1-a126-e2b8210779e5/loiro-longo-v2.jpg" -o src/assets/loiro-longo-v2.jpg
+          [ -s src/assets/cachos-v2.jpg ] || curl -fL --retry 3 "$BASE/__l5e/assets-v1/323499bd-99e3-44b7-ab1f-403892af7e7a/cachos-v2.jpg" -o src/assets/cachos-v2.jpg
+          [ -s src/assets/unhas-v2.jpg ] || curl -fL --retry 3 "$BASE/__l5e/assets-v1/5d407119-bbdc-424d-ab3c-c72b308094c4/unhas-v2.jpg" -o src/assets/unhas-v2.jpg
+          [ -s src/assets/loiro-ondas-v2.jpg ] || curl -fL --retry 3 "$BASE/__l5e/assets-v1/f52cf498-b50e-41c2-b921-f51d9d8e694a/loiro-ondas-v2.jpg" -o src/assets/loiro-ondas-v2.jpg
+          [ -s src/assets/salao-v2.jpg ] || curl -fL --retry 3 "$BASE/__l5e/assets-v1/e9b209ba-13ed-4bbb-930e-e2db0d243eef/salao-v2.jpg" -o src/assets/salao-v2.jpg
+          [ -s src/assets/recepcao-v2.jpg ] || curl -fL --retry 3 "$BASE/__l5e/assets-v1/5fdeeb8d-d203-4f02-9f63-028e43f3ee70/recepcao-v2.jpg" -o src/assets/recepcao-v2.jpg
+
+      - name: Salvar imagens no próprio repositório
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/assets/*.jpg
+          if ! git diff --cached --quiet; then
+            git commit -m "Importa imagens originais do Studio Nill"
+            git push
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Enviar artefato
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v4
